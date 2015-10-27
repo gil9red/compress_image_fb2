@@ -21,6 +21,23 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
+# Если True, менять размер изображения
+is_resize_image = True
+
+# Использовать процентное изменение размера
+use_percent = True
+
+# На сколько процентов изменить размер
+percent = 50
+
+# Жестко-заданный размер изображения
+set_width, set_height = 350, 500
+
+
+# TODO: замена в zip архиве
+# TODO: сделать как модуль (класс/функция) и консоль
+
+
 if __name__ == '__main__':
     fb2_file_name = 'mknr_1.fb2'
 
@@ -40,12 +57,11 @@ if __name__ == '__main__':
 
             im_id = binary.attrib['id']
             im_data = base64.b64decode(binary.text.encode())
+            compress_im_data = im_data
 
             im = Image.open(io.BytesIO(im_data))
             count_bytes = len(im_data)
             total_image_size += count_bytes
-            print('    {}. {}: {} format={} size={}'.format(i, im_id, sizeof_fmt(count_bytes),
-                                                            im.format, im.size), end='')
 
             # Для fb2 доступно 2 формата: png и jpg. jpg в силу своей природы лучше сжат, поэтому
             # способом сжатия может конвертирование в jpg
@@ -53,35 +69,44 @@ if __name__ == '__main__':
                 # Конверируем в JPG
                 jpeg_buffer = io.BytesIO()
                 im.save(jpeg_buffer, format='jpeg')
-                jpg_im_data = jpeg_buffer.getvalue()
-
-                jpg_count_bytes = len(jpg_im_data)
-                compress_total_image_size += jpg_count_bytes
-
-                # TODO: замена в zip архиве
-                # TODO: сделать как модуль (класс/функция) и консоль
-                # TODO: можно еще уменьшать размер картинок -- для экрана телефона картинки размером для
-                # дисплея компа не нужны
-                # # Открываем как Image объект
-                # im = Image.open(jpeg_buffer)
-                # print(' --> {} format={} size={}. Compress: {:.0f}%'.format(
-                #     sizeof_fmt(jpg_count_bytes), im.format,
-                #     im.size, 100 - (jpg_count_bytes / count_bytes * 100)), end='')
-                #
-                # TODO: im.size не изменился -- только формат поменяли
-                # TODO: наверное, лучше вывести сравнение картинок в двух столбцах, типа:
-                # 6. MKnR_v01_13.png: Compress: 77%
-                #     793.7KiB          --> 182.4KiB
-                #     format=PNG        --> format=JPEG
-                #     size=(1199, 1762) --> size=(1199, 1762)
-                print(' --> {} format=JPEG size={}. Compress: {:.0f}%'.format(
-                    sizeof_fmt(jpg_count_bytes), im.size, 100 - (jpg_count_bytes / count_bytes * 100)), end='')
+                compress_im_data = jpeg_buffer.getvalue()
 
                 # Меняем информация о формате и заменяем картинку
-                binary.attrib['content-type'] = 'image/jpeg'
-                binary.text = base64.b64encode(jpg_im_data)
+                content_type = 'image/jpeg'
+                short_content_type = 'jpeg'
 
-            print()
+            if is_resize_image:
+                if use_percent:
+                    base_width, base_height = im.size
+                    width = int(base_width - (base_width / 100) * percent)
+                    height = int(base_height - (base_height / 100) * percent)
+                else:
+                    width, height = set_width, set_height
+
+                compress_im = Image.open(io.BytesIO(compress_im_data))
+                resized_im = compress_im.resize((width, height), Image.ANTIALIAS)
+
+                resize_buffer = io.BytesIO()
+                resized_im.save(resize_buffer, format=short_content_type)
+
+                compress_im_data = resize_buffer.getvalue()
+
+            compress_im = Image.open(io.BytesIO(compress_im_data))
+            compress_count_bytes = len(compress_im_data)
+            compress_total_image_size += compress_count_bytes
+
+            # Меняем информация о формате и заменяем картинку
+            binary.attrib['content-type'] = content_type
+            binary.text = base64.b64encode(compress_im_data)
+
+            # TODO: показывать только сравнение тех данных, что были изменены
+            out_format = ('    {0}. {1}. Compress: {2:.0f}%'
+                          '\n        {3} -> {6}'
+                          '\n        {4} -> {7}'
+                          '\n        {5[0]}x{5[1]} -> {8[0]}x{8[1]}')
+            print(out_format.format(i, im_id, 100 - (compress_count_bytes / count_bytes * 100),
+                  sizeof_fmt(count_bytes), im.format, im.size,
+                  sizeof_fmt(compress_count_bytes), compress_im.format, compress_im.size))
 
         except Exception as e:
             import traceback
