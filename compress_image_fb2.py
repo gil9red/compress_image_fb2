@@ -63,6 +63,20 @@ if __name__ == '__main__':
             count_bytes = len(im_data)
             total_image_size += count_bytes
 
+            diff_dict = {
+                'before': {
+                    'short_content_type': short_content_type.upper(),
+                    'count_bytes': sizeof_fmt(count_bytes),
+                    'size': '{}x{}'.format(*im.size),
+                },
+                'after': {
+                    'short_content_type': None,
+                    'count_bytes': None,
+                    'size': None,
+                }
+            }
+            order_print_diff = ['short_content_type', 'count_bytes', 'size']
+
             # Для fb2 доступно 2 формата: png и jpg. jpg в силу своей природы лучше сжат, поэтому
             # способом сжатия может конвертирование в jpg
             if im.format == 'PNG':
@@ -95,18 +109,21 @@ if __name__ == '__main__':
             compress_count_bytes = len(compress_im_data)
             compress_total_image_size += compress_count_bytes
 
+            diff_dict['after']['short_content_type'] = short_content_type.upper()
+            diff_dict['after']['count_bytes'] = sizeof_fmt(compress_count_bytes)
+            diff_dict['after']['size'] = '{}x{}'.format(*compress_im.size)
+
             # Меняем информация о формате и заменяем картинку
             binary.attrib['content-type'] = content_type
             binary.text = base64.b64encode(compress_im_data)
 
-            # TODO: показывать только сравнение тех данных, что были изменены
-            out_format = ('    {0}. {1}. Compress: {2:.0f}%'
-                          '\n        {3} -> {6}'
-                          '\n        {4} -> {7}'
-                          '\n        {5[0]}x{5[1]} -> {8[0]}x{8[1]}')
-            print(out_format.format(i, im_id, 100 - (compress_count_bytes / count_bytes * 100),
-                  sizeof_fmt(count_bytes), im.format, im.size,
-                  sizeof_fmt(compress_count_bytes), compress_im.format, compress_im.size))
+            compress = 100 - (compress_count_bytes / count_bytes * 100)
+            print('    {0}. {1}. Compress: {2:.0f}%'.format(i, im_id, compress))
+            for k in order_print_diff:
+                v = diff_dict['after'][k]
+                before_v = diff_dict['before'][k]
+                if v is not None and before_v != v:
+                    print('        {} --> {}'.format(before_v, v))
 
         except Exception as e:
             import traceback
