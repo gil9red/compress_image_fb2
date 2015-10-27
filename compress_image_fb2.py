@@ -21,25 +21,22 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-# Если True, менять размер изображения
-is_resize_image = True
+def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=True, use_percent=True, percent=50,
+                       set_width=None, set_height=None):
+    """Функция сжимает изображения в файле FB2 и сохраняет копию с сжатыми картинками в папке с скриптом,
+    добавляя в начало имени файла строку "compress_".
 
-# Использовать процентное изменение размера
-use_percent = True
+    :param fb2_file_name: Путь к файлу fb2
+    :param is_resize_image: Если True, менять размер изображения
+    :param is_convert_to_jpeg: Конвертирование изображений в jpeg, который более легкий, чем png
+    :param use_percent: Использовать процентное изменение размера
+    :param percent: На сколько процентов изменить размер
+    :param set_width: Установка ширины изображения (Используется если:
+    is_resize_image == True and use_percent == False)
+    :param set_height: Установка высоты изображения (Используется если:
+    is_resize_image == True and use_percent == False)
 
-# На сколько процентов изменить размер
-percent = 50
-
-# Жестко-заданный размер изображения
-set_width, set_height = 350, 500
-
-
-# TODO: замена в zip архиве
-# TODO: сделать как модуль (класс/функция) и консоль
-
-
-if __name__ == '__main__':
-    fb2_file_name = 'mknr_1.fb2'
+    """
 
     total_image_size = 0
     compress_total_image_size = 0
@@ -79,7 +76,7 @@ if __name__ == '__main__':
 
             # Для fb2 доступно 2 формата: png и jpg. jpg в силу своей природы лучше сжат, поэтому
             # способом сжатия может конвертирование в jpg
-            if im.format == 'PNG':
+            if is_convert_to_jpeg and im.format == 'PNG':
                 # Конверируем в JPG
                 jpeg_buffer = io.BytesIO()
                 im.save(jpeg_buffer, format='jpeg')
@@ -95,6 +92,9 @@ if __name__ == '__main__':
                     width = int(base_width - (base_width / 100) * percent)
                     height = int(base_height - (base_height / 100) * percent)
                 else:
+                    if set_width is None or set_height is None:
+                        raise Exception('Ширина и высота изображений должна быть задана.')
+
                     width, height = set_width, set_height
 
                 compress_im = Image.open(io.BytesIO(compress_im_data))
@@ -125,7 +125,7 @@ if __name__ == '__main__':
                 if v is not None and before_v != v:
                     print('        {} --> {}'.format(before_v, v))
 
-        except Exception as e:
+        except Exception:
             import traceback
             traceback.print_exc()
 
@@ -151,3 +151,11 @@ if __name__ == '__main__':
         print('Compress: {:.0f}%'.format(100 - (compress_total_image_size / total_image_size * 100)))
     else:
         print('Compress: 0%')
+
+
+# TODO: замена в zip архиве
+# TODO: сделать как модуль (класс/функция) и консоль
+
+if __name__ == '__main__':
+    fb2_file_name = 'mknr_1.fb2'
+    compress_image_fb2(fb2_file_name)
