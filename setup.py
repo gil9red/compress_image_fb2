@@ -10,7 +10,7 @@
 from cx_Freeze import setup, Executable
 
 executables = [
-    Executable('compress_image_fb2')
+    Executable('compress_image_fb2.py')
 ]
 
 setup(name='compress_image_fb2',
