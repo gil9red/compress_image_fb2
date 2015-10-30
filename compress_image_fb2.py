@@ -154,8 +154,23 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=T
 
 
 # TODO: замена в zip архиве
-# TODO: сделать как модуль (класс/функция) и консоль
 
 if __name__ == '__main__':
-    fb2_file_name = 'mknr_1.fb2'
-    compress_image_fb2(fb2_file_name)
+    import click
+
+    @click.command(help='Функция сжимает изображения в файле FB2 и сохраняет копию с сжатыми '
+                        'картинками в папке с скриптом, добавляя в начало имени файла строку "compress_".')
+    @click.argument('fb2_file_name', type=click.Path(exists=True))
+    @click.option('--is_resize_image', default=True, type=bool, help='Менять размер изображения')
+    @click.option('--is_convert_to_jpeg', default=True, type=bool, help='Конвертирование изображений в jpeg, '
+                                                                        'который более легкий, чем png')
+    @click.option('--use_percent', default=True, type=bool, help='Использовать процентное изменение размера')
+    @click.option('--percent', default=50, type=int, help='На сколько процентов изменить размер')
+    @click.option('--set_width', type=int, help=' Установка ширины изображения (Используется если: --is_resize_'
+                                                'image == True and --use_percent == False)')
+    @click.option('--set_height', type=int, help='Установка высоты изображения (Используется если: --is_resize_'
+                                                 'image == True and --use_percent == False)')
+    def main(**kwargs):
+        compress_image_fb2(**kwargs)
+
+    main()
