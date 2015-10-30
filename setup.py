@@ -9,6 +9,8 @@
 
 from cx_Freeze import setup, Executable
 
+# TODO: http://cx-freeze.readthedocs.org/en/latest/distutils.html#distutils
+
 executables = [
     Executable('compress_image_fb2.py')
 ]
