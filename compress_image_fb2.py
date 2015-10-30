@@ -138,7 +138,9 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=T
                                                    total_image_size / fb2_file_size * 100))
 
     if compress_total_image_size:
-        compress_fb2_file_name = 'compress_' + fb2_file_name
+        # К имени файла fb2 добавим строку 'compress_'
+        split_path = os.path.split(fb2_file_name)
+        compress_fb2_file_name = os.path.join(split_path[0], 'compress_' + split_path[-1])
 
         # Save to XML file
         tree = etree.ElementTree(xml_fb2)
@@ -146,7 +148,7 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=T
 
         print()
         print('Compressed fb2 file saved as {} ({})'.format(compress_fb2_file_name,
-                                                            sizeof_fmt(os.path.getsize('compress_' + fb2_file_name))))
+                                                            sizeof_fmt(os.path.getsize(compress_fb2_file_name))))
         print('Compress total image size = {}'.format(sizeof_fmt(compress_total_image_size)))
         print('Compress: {:.0f}%'.format(100 - (compress_total_image_size / total_image_size * 100)))
     else:
