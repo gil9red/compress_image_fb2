@@ -79,6 +79,10 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=T
             if is_convert_to_jpeg and im.format == 'PNG':
                 # Конверируем в JPG
                 jpeg_buffer = io.BytesIO()
+                if im.mode in ('RGBA', 'LA', 'P', 'PA'):
+                    background = Image.new('RGB', im.size, 'white')
+                    background.paste(im, im.split()[-1])
+                    im = background
                 im.save(jpeg_buffer, format='jpeg')
                 compress_im_data = jpeg_buffer.getvalue()
 
@@ -98,7 +102,7 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=T
                     width, height = set_width, set_height
 
                 compress_im = Image.open(io.BytesIO(compress_im_data))
-                resized_im = compress_im.resize((width, height), Image.ANTIALIAS)
+                resized_im = compress_im.resize((width, height), Image.Resampling.LANCZOS)
 
                 resize_buffer = io.BytesIO()
                 resized_im.save(resize_buffer, format=short_content_type)
