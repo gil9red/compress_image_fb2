@@ -105,7 +105,7 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=T
                 resized_im = compress_im.resize((width, height), Image.Resampling.LANCZOS)
 
                 resize_buffer = io.BytesIO()
-                resized_im.save(resize_buffer, format=short_content_type)
+                resized_im.save(resize_buffer, format = 'JPEG' if short_content_type.lower() == 'jpg' else short_content_type.upper())
 
                 compress_im_data = resize_buffer.getvalue()
 
