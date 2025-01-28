@@ -5,6 +5,8 @@ __author__ = 'ipetrash'
 
 """Скрипт сжимает картинки в файле fb2."""
 
+
+
 import os
 import base64
 import io
@@ -77,10 +79,10 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=F
             # Сжатие изображения
             jpeg_buffer = io.BytesIO()
             if im.format.lower() in ('png'):
-              quantized_im = quantize_image(im)  # Исправленное использование
-              quantized_im.save(jpeg_buffer, format='png', optimize=True)
+               quantized_im = quantize_image(im)
+               quantized_im.save(jpeg_buffer, format='png', optimize=True)
             else:
-              im.save(jpeg_buffer, format=im.format, optimize=True, quality=75)
+               im.save(jpeg_buffer, format=im.format, optimize=True, quality=75)
             compress_im_data = jpeg_buffer.getvalue()
 
             # Изменение размера изображения
@@ -105,10 +107,10 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=F
                    # Сохраняем изменённое изображение
                     resize_buffer = io.BytesIO()
                     if im.format.lower() in ('png'):
-                        quantized_im = quantize_image(resized_im) # Исправленное использование
-                        quantized_im.save(resize_buffer, format='png', optimize=True)
+                      quantized_im = quantize_image(resized_im)
+                      quantized_im.save(resize_buffer, format='png', optimize=True)
                     else:
-                        resized_im.save(resize_buffer, format=im.format, optimize=True, quality=75)
+                      resized_im.save(resize_buffer, format=im.format, optimize=True, quality=75)
                     compress_im_data = resize_buffer.getvalue()
 
             compress_count_bytes = len(compress_im_data)
@@ -138,17 +140,19 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=F
     fb2.close()
     compress_file_name = 'compress_' + os.path.basename(fb2_file_name)
     if compress_total_image_size < total_image_size:
-      compress_file_path = os.path.join(os.path.dirname(fb2_file_name), compress_file_name) # Сохранение в директории с исходным файлом
+      compress_file_path = os.path.join(os.path.dirname(fb2_file_name), compress_file_name)
+      xml_string = etree.tostring(xml_fb2, encoding='utf-8', pretty_print=True, xml_declaration=True).decode('utf-8').replace('\r\n','\n').encode('utf-8') # Явно указываем кодировку utf-8 и заменяем CRLF на LF
       with open(compress_file_path, 'wb') as new_fb2:
-        new_fb2.write(etree.tostring(xml_fb2, encoding='utf8', pretty_print=True, xml_declaration=True))
+        new_fb2.write(xml_string)
       print(f'    All images compression: {sizeof_fmt(total_image_size)} --> {sizeof_fmt(compress_total_image_size)} ')
       diff_percent = ((total_image_size - compress_total_image_size) / total_image_size) * 100 if total_image_size else 0
       print(f'    Diff size: {round(diff_percent)}%')
       print(f'    Файл сохранен: {compress_file_path}')
     else:
-      compress_file_path = os.path.join(os.path.dirname(fb2_file_name), compress_file_name) # Сохранение в директории с исходным файлом
+      compress_file_path = os.path.join(os.path.dirname(fb2_file_name), compress_file_name)
+      xml_string = etree.tostring(xml_fb2, encoding='utf-8', pretty_print=True, xml_declaration=True).decode('utf-8').replace('\r\n','\n').encode('utf-8') # Явно указываем кодировку utf-8 и заменяем CRLF на LF
       with open(compress_file_path, 'wb') as new_fb2:
-        new_fb2.write(etree.tostring(xml_fb2, encoding='utf8', pretty_print=True, xml_declaration=True))
+        new_fb2.write(xml_string)
       print('    Сжатие не дало результата, но файл сохранен!')
       print(f'    Файл сохранен: {compress_file_path}')
     return None
@@ -197,4 +201,3 @@ if __name__ == '__main__':
         compress_image_fb2(**kwargs)
 
     main()
-
