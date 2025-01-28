@@ -8,10 +8,10 @@ __author__ = 'ipetrash'
 import os
 import base64
 import io
-
 from lxml import etree
 from PIL import Image
-
+from imagequant import quantize_pil_image as quantize_image # Исправленный импорт для Федоры
+# В остльных случаях quantize_pil_image as не нужен Наверное
 
 def sizeof_fmt(num, suffix='B'):
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
@@ -21,7 +21,7 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=True, use_percent=True, percent=50,
+def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=False, use_percent=False, percent=False,
                        set_width=None, set_height=None):
     """Функция сжимает изображения в файле FB2 и сохраняет копию с сжатыми картинками в папке с скриптом,
     добавляя в начало имени файла строку "compress_".
@@ -40,7 +40,7 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=T
 
     total_image_size = 0
     compress_total_image_size = 0
-
+    
     print(fb2_file_name + ':')
 
     fb2 = open(fb2_file_name, encoding='utf8')
@@ -74,66 +74,84 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=T
             }
             order_print_diff = ['short_content_type', 'count_bytes', 'size']
 
-            # Для fb2 доступно 2 формата: png и jpg. jpg в силу своей природы лучше сжат, поэтому
-            # способом сжатия может конвертирование в jpg
-            if is_convert_to_jpeg and im.format == 'PNG':
-                # Конверируем в JPG
-                jpeg_buffer = io.BytesIO()
-                if im.mode in ('RGBA', 'LA', 'P', 'PA'):
-                    background = Image.new('RGB', im.size, 'white')
-                    background.paste(im, im.split()[-1])
-                    im = background
-                im.save(jpeg_buffer, format='jpeg')
-                compress_im_data = jpeg_buffer.getvalue()
+            # Сжатие изображения
+            jpeg_buffer = io.BytesIO()
+            if im.format.lower() in ('png'):
+              quantized_im = quantize_image(im)  # Исправленное использование
+              quantized_im.save(jpeg_buffer, format='png', optimize=True)
+            else:
+              im.save(jpeg_buffer, format=im.format, optimize=True, quality=75)
+            compress_im_data = jpeg_buffer.getvalue()
 
-                # Меняем информация о формате и заменяем картинку
-                content_type = 'image/jpeg'
-                short_content_type = 'jpeg'
-
+            # Изменение размера изображения
             if is_resize_image:
-                if use_percent:
-                    base_width, base_height = im.size
-                    width = int(base_width - (base_width / 100) * percent)
-                    height = int(base_height - (base_height / 100) * percent)
-                else:
-                    if set_width is None or set_height is None:
-                        raise Exception('Ширина и высота изображений должна быть задана.')
+                # Определяем большую сторону изображения
+                max_size = 800  # Максимальный размер большей стороны
+                width, height = im.size
 
-                    width, height = set_width, set_height
+                if max(width, height) > max_size:
+                    # Вычисляем коэффициент масштабирования
+                    if width > height:
+                        new_width = max_size
+                        new_height = int(height * (max_size / width))
+                    else:
+                        new_height = max_size
+                        new_width = int(width * (max_size / height))
 
-                compress_im = Image.open(io.BytesIO(compress_im_data))
-                resized_im = compress_im.resize((width, height), Image.Resampling.LANCZOS)
+                   # Изменяем размер изображения
+                    compress_im = Image.open(io.BytesIO(compress_im_data))
+                    resized_im = compress_im.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-                resize_buffer = io.BytesIO()
-                resized_im.save(resize_buffer, format = 'JPEG' if short_content_type.lower() == 'jpg' else short_content_type.upper())
+                   # Сохраняем изменённое изображение
+                    resize_buffer = io.BytesIO()
+                    if im.format.lower() in ('png'):
+                        quantized_im = quantize_image(resized_im) # Исправленное использование
+                        quantized_im.save(resize_buffer, format='png', optimize=True)
+                    else:
+                        resized_im.save(resize_buffer, format=im.format, optimize=True, quality=75)
+                    compress_im_data = resize_buffer.getvalue()
 
-                compress_im_data = resize_buffer.getvalue()
-
-            compress_im = Image.open(io.BytesIO(compress_im_data))
             compress_count_bytes = len(compress_im_data)
             compress_total_image_size += compress_count_bytes
-
-            diff_dict['after']['short_content_type'] = short_content_type.upper()
+            im = Image.open(io.BytesIO(compress_im_data))
+            diff_dict['after']['short_content_type'] = im.format.upper()
             diff_dict['after']['count_bytes'] = sizeof_fmt(compress_count_bytes)
-            diff_dict['after']['size'] = '{}x{}'.format(*compress_im.size)
-
-            # Меняем информация о формате и заменяем картинку
-            binary.attrib['content-type'] = content_type
-            binary.text = base64.b64encode(compress_im_data)
-
-            compress = 100 - (compress_count_bytes / count_bytes * 100)
-            print('    {0}. {1}. Compress: {2:.0f}%'.format(i, im_id, compress))
-            for k in order_print_diff:
-                v = diff_dict['after'][k]
-                before_v = diff_dict['before'][k]
-                if v is not None and before_v != v:
-                    print('        {} --> {}'.format(before_v, v))
-
-        except Exception:
-            import traceback
-            traceback.print_exc()
+            diff_dict['after']['size'] = '{}x{}'.format(*im.size)
+            diff_percent = ((count_bytes - compress_count_bytes) / count_bytes) * 100 if count_bytes else 0
+            diff_str = f'{(round(diff_percent)) if use_percent else round(diff_percent)}'
+            print(f'    {im_id}. Compress: {diff_str}%')
+            if diff_str:
+               for diff in order_print_diff:
+                  if diff_dict['before'][diff] != diff_dict['after'][diff]:
+                     print(f'        {diff_dict["before"][diff]} --> {diff_dict["after"][diff]}')
+            binary.text = base64.b64encode(compress_im_data).decode()
+        except FileNotFoundError:
+            print(f"Ошибка: Файл изображения не найден: {fb2_file_name}")
+        except Exception as e:
+            print(f"Произошла ошибка при обработке файла: {fb2_file_name}: {e}")
+        finally:
+            try:
+                im.close()
+            except:
+                pass
 
     fb2.close()
+    compress_file_name = 'compress_' + os.path.basename(fb2_file_name)
+    if compress_total_image_size < total_image_size:
+      compress_file_path = os.path.join(os.path.dirname(fb2_file_name), compress_file_name) # Сохранение в директории с исходным файлом
+      with open(compress_file_path, 'wb') as new_fb2:
+        new_fb2.write(etree.tostring(xml_fb2, encoding='utf8', pretty_print=True, xml_declaration=True))
+      print(f'    All images compression: {sizeof_fmt(total_image_size)} --> {sizeof_fmt(compress_total_image_size)} ')
+      diff_percent = ((total_image_size - compress_total_image_size) / total_image_size) * 100 if total_image_size else 0
+      print(f'    Diff size: {round(diff_percent)}%')
+      print(f'    Файл сохранен: {compress_file_path}')
+    else:
+      compress_file_path = os.path.join(os.path.dirname(fb2_file_name), compress_file_name) # Сохранение в директории с исходным файлом
+      with open(compress_file_path, 'wb') as new_fb2:
+        new_fb2.write(etree.tostring(xml_fb2, encoding='utf8', pretty_print=True, xml_declaration=True))
+      print('    Сжатие не дало результата, но файл сохранен!')
+      print(f'    Файл сохранен: {compress_file_path}')
+    return None
 
     fb2_file_size = os.path.getsize(fb2_file_name)
     print()
@@ -158,7 +176,6 @@ def compress_image_fb2(fb2_file_name, is_resize_image=True, is_convert_to_jpeg=T
     else:
         print('Compress: 0%')
 
-
 # TODO: замена в zip архиве
 
 if __name__ == '__main__':
@@ -180,3 +197,4 @@ if __name__ == '__main__':
         compress_image_fb2(**kwargs)
 
     main()
+
