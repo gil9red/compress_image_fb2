@@ -1,3 +1,4 @@
-lxml == 4.6.5
-Pillow == 10.3.0
-cx_Freeze == 4.3.4
+lxml==5.3.1
+Pillow==11.1.0
+click==8.1.8
+imagequant==1.1.3
