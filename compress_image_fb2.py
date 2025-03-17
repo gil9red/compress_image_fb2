@@ -307,11 +307,12 @@ def compress_image_fb2(
         text=fb2_data,
         parser=etree.XMLParser(
             # Уменьшение размера XML
-            # Замена \n\r на \n выполняется штатно перед парсингом:
+            # NOTE: Замена \n\r на \n выполняется штатно перед парсингом:
             # https://www.w3.org/TR/REC-xml/#sec-line-ends
             remove_blank_text=True,
             remove_comments=True,
             ns_clean=True,
+            # NOTE: Для обработки больших XML
             huge_tree=True,
         ),
     )
